@@ -7,6 +7,9 @@ using HostDataNamespace;
 using ClientDataNamespace;
 using PlayerPointNamespace;
 using System.Collections.Concurrent;
+using FoodNamespace;
+using System.Drawing;
+
 
 public class UdpServer
 {
@@ -15,12 +18,22 @@ public class UdpServer
     private static IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
     private static UdpClient udpListener = new UdpClient(11000);
     private static HostData hostData = new(0, new Content("", 0));
-    private const double MinimumMovementThreshold = 5.0;
-    private static double MouseSpeed = 3;
-    private static bool loop = true;
+    private static List<Food> foods = new List<Food>();
+    private static Random random = new Random();
     private static DateTime lastPrintTime = DateTime.MinValue;
     private static DateTime lastPrintTime2 = DateTime.MinValue;
     private static DateTime timeNow = DateTime.Now;
+    private static DateTime setTime;
+    private static Point map = new Point(4000,2000);
+    private const double MinimumMovementThreshold = 5.0;
+    private static double MouseSpeed = 3;
+    private const int initFood = 1000;
+    private const int maxFood = 2000;
+    private static int ellipseMapPointer = 0;
+    private static bool[,] grid = new bool[map.X, map.Y];
+    private static bool IsCreatFood = false;
+    private static bool loop = true;
+   
     
 
     public static void Main()
@@ -101,9 +114,11 @@ public class UdpServer
         }
         else
             hostData.Content.Message = "Failure";
+        hostData.Content.foods = foods;
         hostData.Content.PlayerID = Number;
         hostData.Mode = 0;
         SendMessageToAllClients(hostData);
+        hostData.Content.foods = new List<Food>();
     }
     private static void UpdatePlayerPosition(ClientData clientData)
     {
@@ -115,10 +130,10 @@ public class UdpServer
         }
         else
         {
-            if ((DateTime.Now - lastPrintTime).TotalSeconds >= 10)
+            if ((DateTime.Now - lastPrintTime2).TotalSeconds >= 10)
             {
                 Console.WriteLine($"Unknown mouse event Client number : {clientData.Number}");
-                lastPrintTime = DateTime.Now;
+                lastPrintTime2 = DateTime.Now;
             }
                 
         }
@@ -144,11 +159,21 @@ public class UdpServer
         {
             int key = pair.Key; // 獲取鍵
             PlayerData player = pair.Value; // 獲取值
+            List<Food> AddEllipse = new List<Food>();
 
             player.PlayerPosition = UpdatePlayerPosition(player); // 更新玩家位置
 
-            playerList[key] = player;
+            if (!IsCreatFood)
+                GenerateFood(20, AddEllipse);
+            else if ((DateTime.Now - setTime).TotalSeconds >= 1) //定時投放食物
+            {
+                GenerateFood(5, AddEllipse);
+                setTime = DateTime.Now;
+            }
 
+
+            playerList[key] = player;
+            hostData.Content.AddEllipse = AddEllipse;
             hostData.Mode = 1;
             hostData.Content.PlayerData = player;
             hostData.Content.PlayerID = key;
@@ -181,6 +206,45 @@ public class UdpServer
         //PlayerPosition.Y = Math.Max(0, Math.Min(dataPacket.GameCanvasActualHeight - dataPacket.PlayerHeight, PlayerPosition.Y));
 
         return PP;
+    }
+
+    private static void GenerateFood(int qua, List<Food> AddEllipse)
+    {
+        if (foods.Count > initFood)
+            IsCreatFood = true;
+        if (foods.Count < maxFood)
+        {
+            int gridSize = 20; // 格子大小，根據需要調整
+            int cols = (int)(map.X / gridSize);
+            int rows = (int)(map.Y / gridSize);
+            for (int i = 0; i < qua; i++)
+            {
+                int col = random.Next(cols);
+                int row = random.Next(rows);
+
+                if (!grid[col, row]) // 檢查格子是否空
+                {
+                    double diameter = random.Next(5, 11); // 食物直徑
+                    double x = col * gridSize + (gridSize - diameter) / 2;
+                    double y = row * gridSize + (gridSize - diameter) / 2;
+
+                    int randomKey = ellipseMapPointer++;
+
+
+                    int randomColor = random.Next(7);
+                    Food newFood = new Food(x, y, col, row, diameter, randomColor, randomKey);
+                    foods.Add(newFood);
+
+                    //Ellipse foundEllipse = GetEllipseByKey(newFood.Key);
+                    AddEllipse.Add(newFood);
+                    //CreateCircle(foundEllipse, randomColor, newFood.X, newFood.Y);
+                    grid[col, row] = true; // 更新格子狀態
+
+                    // 在這裡調用創建食物的方法
+                }
+            }
+
+        }
     }
 
 }

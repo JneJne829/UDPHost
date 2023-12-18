@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using PlayerDataNamespace;
+using FoodNamespace;
 
 namespace HostDataNamespace
 {
@@ -29,7 +30,8 @@ namespace HostDataNamespace
         public string Message { get; set; }
         public int PlayerID { get; set; }
         public PlayerData PlayerData { get; set; }
-
+        public List<Food> AddEllipse { get; set; }
+        public List<Food> foods { get; set; }
         public Content()
         {
 
