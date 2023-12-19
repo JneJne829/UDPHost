@@ -55,7 +55,8 @@ public class UdpServer
 
         foreach (var clientEndPoint in clientEndpoints)
         {
-            if ((host.Mode != 1) || (host.Mode == 1 && ((DateTime.Now - lastPrintTime).TotalSeconds >= 10)))
+            if ((host.Mode > 1) || (host.Mode == 1 && ((DateTime.Now - lastPrintTime).TotalSeconds >= 10))
+                || ((host.Content.Message == "Success") && host.Mode == 0))
             {
                 Console.WriteLine($"Send to {clientEndPoint} Mode = {host.Mode} Context = {host.Content.PlayerID} {host.Content.Message}");
             }
@@ -107,18 +108,34 @@ public class UdpServer
     }
     private static void PostbackCreationMessage(int Number)
     {
-        if (!playerList.ContainsKey(Number))
+        HostData hostData = new HostData(0,new Content("", Number));
+        if (playerList.ContainsKey(Number))       
+            hostData.Content.Message = "Failure";                
+        else
         {
             playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 40.0, 40.0);
+            hostData.Content.Message = "Generating";
+            // 使用已存在的 private static List<Food> foods
+            int batchSize = 20;
+            int total = foods.Count;
+            for (int i = 0; i < total; i += batchSize)
+            {
+                // 獲取當前批次的食物列表
+                var batch = foods.Skip(i).Take(batchSize).ToList();
+
+                // 將批次列表設置到 hostData.Content.foods
+                hostData.Content.foods = batch;
+
+                // 發送當前批次的數據
+                SendMessageToAllClients(hostData);
+            }
+
+            // 最後清空 hostData.Content.foods
+            hostData.Content.foods = new List<Food>();
             hostData.Content.Message = "Success";
+            SendMessageToAllClients(hostData);
         }
-        else
-            hostData.Content.Message = "Failure";
-        hostData.Content.foods = foods;
-        hostData.Content.PlayerID = Number;
-        hostData.Mode = 0;
-        SendMessageToAllClients(hostData);
-        hostData.Content.foods = new List<Food>();
+
     }
     private static void UpdatePlayerPosition(ClientData clientData)
     {
