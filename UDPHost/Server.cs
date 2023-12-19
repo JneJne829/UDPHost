@@ -33,6 +33,7 @@ public class UdpServer
     private static bool[,] grid = new bool[map.X, map.Y];
     private static bool IsCreatFood = false;
     private static bool loop = true;
+    private static bool generateFoodLock = false;
    
     
 
@@ -108,15 +109,16 @@ public class UdpServer
     }
     private static void PostbackCreationMessage(int Number)
     {
-        HostData hostData = new HostData(0,new Content("", Number));
+        HostData sendHostData = new HostData(0,new Content("", Number));
         if (playerList.ContainsKey(Number))       
-            hostData.Content.Message = "Failure";                
+            sendHostData.Content.Message = "Failure";                
         else
         {
             playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 40.0, 40.0);
-            hostData.Content.Message = "Generating";
+            sendHostData.Content.Message = "Generating";
             // 使用已存在的 private static List<Food> foods
             int batchSize = 20;
+            generateFoodLock = true;
             int total = foods.Count;
             for (int i = 0; i < total; i += batchSize)
             {
@@ -124,18 +126,19 @@ public class UdpServer
                 var batch = foods.Skip(i).Take(batchSize).ToList();
 
                 // 將批次列表設置到 hostData.Content.foods
-                hostData.Content.foods = batch;
-
+                sendHostData.Content.AddEllipse = batch;
+                Console.WriteLine($"batch = {(batch.Count).ToString("D2")} To {sendHostData.Content.PlayerID} Mode = {sendHostData.Mode} Msg = {sendHostData.Content.Message}");
                 // 發送當前批次的數據
-                SendMessageToAllClients(hostData);
+                SendMessageToAllClients(sendHostData);
             }
 
             // 最後清空 hostData.Content.foods
-            hostData.Content.foods = new List<Food>();
-            hostData.Content.Message = "Success";
-            SendMessageToAllClients(hostData);
+            sendHostData.Content.AddEllipse = new List<Food>();
+            sendHostData.Content.Message = "Success";
         }
-
+        Console.WriteLine($"batch = XX To {sendHostData.Content.PlayerID} Mode = {sendHostData.Mode} Msg = {sendHostData.Content.Message}");
+        SendMessageToAllClients(sendHostData);
+        generateFoodLock = false;
     }
     private static void UpdatePlayerPosition(ClientData clientData)
     {
@@ -190,7 +193,10 @@ public class UdpServer
 
 
             playerList[key] = player;
-            hostData.Content.AddEllipse = AddEllipse;
+            if (!generateFoodLock)
+                hostData.Content.AddEllipse = AddEllipse;
+            else
+                hostData.Content.AddEllipse = new List<Food>();
             hostData.Mode = 1;
             hostData.Content.PlayerData = player;
             hostData.Content.PlayerID = key;
@@ -229,7 +235,7 @@ public class UdpServer
     {
         if (foods.Count > initFood)
             IsCreatFood = true;
-        if (foods.Count < maxFood)
+        if (foods.Count < maxFood )
         {
             int gridSize = 20; // 格子大小，根據需要調整
             int cols = (int)(map.X / gridSize);
