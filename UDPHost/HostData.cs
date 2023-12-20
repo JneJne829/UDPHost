@@ -31,6 +31,7 @@ namespace HostDataNamespace
         public int PlayerID { get; set; }
         public PlayerData PlayerData { get; set; }
         public List<Food> AddEllipse { get; set; }
+        public List<int> eatenFood { get; set; }
         public Content()
         {
 

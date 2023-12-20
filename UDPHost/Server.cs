@@ -24,11 +24,11 @@ public class UdpServer
     private static DateTime lastPrintTime2 = DateTime.MinValue;
     private static DateTime timeNow = DateTime.Now;
     private static DateTime setTime;
-    private static Point map = new Point(4000,2000);
+    private static Point map = new Point(6000,3000);
     private const double MinimumMovementThreshold = 5.0;
     private static double MouseSpeed = 3;
-    private const int initFood = 1000;
-    private const int maxFood = 2000;
+    private const int initFood = 4000;
+    private const int maxFood = 8000;
     private static int ellipseMapPointer = 0;
     private static bool[,] grid = new bool[map.X, map.Y];
     private static bool IsCreatFood = false;
@@ -74,6 +74,7 @@ public class UdpServer
         {
             while (loop)
             {
+                //讀取到訊息後儲存IP、返序列化並調用ReceiveDataFromClient()處理資料
                 var receivedBytes = await udpListener.ReceiveAsync();
                 IPEndPoint senderEndPoint = receivedBytes.RemoteEndPoint;               
                 var clientData = JsonSerializer.Deserialize<ClientData>(receivedBytes.Buffer);
@@ -114,7 +115,7 @@ public class UdpServer
             sendHostData.Content.Message = "Failure";                
         else
         {
-            playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 40.0, 40.0);
+            playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 20.0, 20.0);
             sendHostData.Content.Message = "Generating";
             // 使用已存在的 private static List<Food> foods
             int batchSize = 20;
@@ -124,14 +125,12 @@ public class UdpServer
             {
                 // 獲取當前批次的食物列表
                 var batch = foods.Skip(i).Take(batchSize).ToList();
-
                 // 將批次列表設置到 hostData.Content.foods
                 sendHostData.Content.AddEllipse = batch;
                 Console.WriteLine($"batch = {(batch.Count).ToString("D2")} To {sendHostData.Content.PlayerID} Mode = {sendHostData.Mode} Msg = {sendHostData.Content.Message}");
                 // 發送當前批次的數據
                 SendMessageToAllClients(sendHostData);
             }
-
             // 最後清空 hostData.Content.foods
             sendHostData.Content.AddEllipse = new List<Food>();
             sendHostData.Content.Message = "Success";
@@ -180,29 +179,78 @@ public class UdpServer
             int key = pair.Key; // 獲取鍵
             PlayerData player = pair.Value; // 獲取值
             List<Food> AddEllipse = new List<Food>();
+            List<int> eatenFood = new List<int>();
 
+            CheckFoodProximity(player,eatenFood);
             player.PlayerPosition = UpdatePlayerPosition(player); // 更新玩家位置
 
-            if (!IsCreatFood)
-                GenerateFood(20, AddEllipse);
-            else if ((DateTime.Now - setTime).TotalSeconds >= 1) //定時投放食物
-            {
-                GenerateFood(5, AddEllipse);
-                setTime = DateTime.Now;
-            }
-
-
-            playerList[key] = player;
             if (!generateFoodLock)
-                hostData.Content.AddEllipse = AddEllipse;
-            else
-                hostData.Content.AddEllipse = new List<Food>();
+            {
+                if (!IsCreatFood)
+                    GenerateFood(20, AddEllipse);
+                else if ((DateTime.Now - setTime).TotalSeconds >= 1) //定時投放食物
+                {
+                    GenerateFood(5, AddEllipse);
+                    setTime = DateTime.Now;
+                }
+            }
+          
+            playerList[key] = player;         
+            hostData.Content.AddEllipse = AddEllipse;
+            hostData.Content.eatenFood = eatenFood;
             hostData.Mode = 1;
             hostData.Content.PlayerData = player;
             hostData.Content.PlayerID = key;
             hostData.Content.Message = "PlayerMove";
             SendMessageToAllClients(hostData);
         }
+    }
+    private static void CheckFoodProximity(PlayerData player, List<int> eatenFood)
+    {
+        // 获取距离小于10的食物列表
+        var closeFoods = foods
+            .Where(food => CalculateDistance(player.PlayerPosition.X + (player.PlayerDiameter / 2), player.PlayerPosition.Y + player.PlayerDiameter / 2, food.X + (food.Diameter / 2), food.Y + food.Diameter / 2) < (player.PlayerDiameter / 2) + (food.Diameter / 2) * 0.8)
+            .ToList();
+
+        // 对于每个靠近的食物，执行某种操作
+        foreach (var food in closeFoods)
+        {
+            // 执行您想要的回饋逻辑
+            player = GiveFeedback(player, food);
+            eatenFood.Add(food.Key);
+        }
+    }
+    public static PlayerData GiveFeedback(PlayerData player, Food food)
+    {
+        double coe = CalculateCoe(player.PlayerMass);
+        player.PlayerMass += food.Diameter / coe;
+        player.PlayerDiameter = CalculatePlayerDiameter(player.PlayerMass); //這裡可以改變質量映射的直徑
+        grid[food.Col, food.Row] = false;
+        foods.Remove(food);
+        return player;
+    }
+    public static double CalculatePlayerDiameter(double playerMass)
+    {
+        // 根據質量計算黏性，這裡可以根據您的遊戲邏輯來調整
+        double stickiness = 1 - Math.Log10(playerMass) / 10;
+
+        // 使用計算出的黏性來確定直徑
+        return Math.Pow(playerMass, stickiness);
+    }
+    private static double CalculateCoe(double playerMass)
+    {
+        if (playerMass < 30)
+            return 10.0;
+        else if (playerMass < 50)
+            return 1.2 * CalculateCoe(playerMass - 10);
+        else if (playerMass < 100)
+            return 1.2 * CalculateCoe(playerMass - 10);
+        else
+            return 1.3 * CalculateCoe(playerMass - 100);
+    }
+    public static double CalculateDistance(double x1, double y1, double x2, double y2)
+    {
+        return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
     }
 
     private static PlayerPoint UpdatePlayerPosition(PlayerData player)
