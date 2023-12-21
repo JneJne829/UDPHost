@@ -115,7 +115,7 @@ public class UdpServer
             sendHostData.Content.Message = "Failure";                
         else
         {
-            playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 20.0, 20.0);
+            playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 20.0, CalculatePlayerDiameter(20.0));
             sendHostData.Content.Message = "Generating";
             // 使用已存在的 private static List<Food> foods
             int batchSize = 20;
@@ -198,12 +198,47 @@ public class UdpServer
             playerList[key] = player;         
             hostData.Content.AddEllipse = AddEllipse;
             hostData.Content.eatenFood = eatenFood;
+            ///hostData.Content.PlayerData.PlayerMass = pair.Value.PlayerMass;
             hostData.Mode = 1;
             hostData.Content.PlayerData = player;
             hostData.Content.PlayerID = key;
             hostData.Content.Message = "PlayerMove";
             SendMessageToAllClients(hostData);
         }
+        List<int> deleteKey = new List<int>();
+        foreach (var pair1 in playerList) // 計算玩家碰撞
+        {
+            foreach (var pair2 in playerList)
+            {
+                if (pair1.Key != pair2.Key) // 确保不与自己比较
+                {
+                    double distance = CalculateDistance(pair1.Value.PlayerPosition, pair2.Value.PlayerPosition, pair1.Value.PlayerDiameter, pair2.Value.PlayerDiameter);
+
+                    if (distance <= (pair1.Value.PlayerDiameter / 2) && (pair2.Value.PlayerMass / pair1.Value.PlayerMass) < 0.7)
+                    {
+                        pair1.Value.PlayerMass += pair2.Value.PlayerMass * 0.9;
+                        pair1.Value.PlayerDiameter = CalculatePlayerDiameter(pair1.Value.PlayerMass);
+                        deleteKey.Add(pair2.Key);
+                    }
+                }
+
+            }
+        }
+       
+        foreach (int key in deleteKey)
+        {
+            hostData.Mode = 1;
+            hostData.Content.Message = "Delete";
+            hostData.Content.PlayerID = key;
+            SendMessageToAllClients(hostData);
+            playerList.TryRemove(key, out _);
+        }
+    }
+    private static double CalculateDistance(PlayerPoint point1, PlayerPoint point2, double pair1D, double pair2D)
+    {
+        double xDiff = (point1.X + (pair1D / 2)) - (point2.X + (pair2D / 2));
+        double yDiff = (point1.Y + (pair1D / 2)) - (point2.Y + (pair2D / 2));
+        return Math.Sqrt(xDiff * xDiff + yDiff * yDiff);
     }
     private static void CheckFoodProximity(PlayerData player, List<int> eatenFood)
     {
@@ -269,8 +304,8 @@ public class UdpServer
 
         if (length >= MinimumMovementThreshold)
         {
-            PP.X += directionX * MouseSpeed;
-            PP.Y += directionY * MouseSpeed;
+            PP.X += directionX * MouseSpeed * CalculationSpeedCoe(player.PlayerMass);
+            PP.Y += directionY * MouseSpeed * CalculationSpeedCoe(player.PlayerMass);
         }
         
         //PlayerPosition.X = Math.Max(0, Math.Min(dataPacket.GameCanvasActualWidth - dataPacket.PlayerWidth, PlayerPosition.X));
@@ -278,14 +313,41 @@ public class UdpServer
 
         return PP;
     }
+    public static double CalculationSpeedCoe(double playerMass)
+    {
+        const double maxMass = 400;
+        const double minCoe = 0.6;
+        const double transitionMass = 100; // 在此质量值之前变化较慢
+        const double transitionCoe = 0.92; // 在 transitionMass 时的系数
 
+        // 确保质量在1和400之间
+        playerMass = Math.Max(1, Math.Min(playerMass, maxMass));
+
+        double speedCoe;
+        if (playerMass <= transitionMass)
+        {
+            // 在 transitionMass 之前使用较慢的变化速度
+            double rangeToTransition = 1 - transitionCoe;
+            double normalizedMass = playerMass / transitionMass;
+            speedCoe = 1 - (rangeToTransition * normalizedMass);
+        }
+        else
+        {
+            // 在 transitionMass 之后使用更快的变化速度
+            double rangePostTransition = transitionCoe - minCoe;
+            double normalizedMass = (playerMass - transitionMass) / (maxMass - transitionMass);
+            speedCoe = transitionCoe - (rangePostTransition * normalizedMass);
+        }
+
+        return speedCoe;
+    }
     private static void GenerateFood(int qua, List<Food> AddEllipse)
     {
         if (foods.Count > initFood)
             IsCreatFood = true;
         if (foods.Count < maxFood )
         {
-            int gridSize = 20; // 格子大小，根據需要調整
+            int gridSize = 5; // 格子大小，根據需要調整
             int cols = (int)(map.X / gridSize);
             int rows = (int)(map.Y / gridSize);
             for (int i = 0; i < qua; i++)
