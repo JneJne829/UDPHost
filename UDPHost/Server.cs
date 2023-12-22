@@ -92,7 +92,7 @@ public class UdpServer
                 break;
             case 1:
                 clientEndpoints.Add(senderEndPoint);
-                PostbackCreationMessage(clientData.Number);
+                PostbackCreationMessage(clientData.Number, clientData.Color);
                 break;
             case 2:
                 UpdatePlayerPosition(clientData);
@@ -108,14 +108,14 @@ public class UdpServer
         else
             Console.WriteLine($"{senderEndPoint} Delete Failed : Unknown IP");
     }
-    private static void PostbackCreationMessage(int Number)
+    private static void PostbackCreationMessage(int Number, int color)
     {
         HostData sendHostData = new HostData(0,new Content("", Number));
         if (playerList.ContainsKey(Number))       
             sendHostData.Content.Message = "Failure";                
         else
         {
-            playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 20.0, CalculatePlayerDiameter(20.0));
+            playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 20.0, CalculatePlayerDiameter(20.0), color, 0, 0);
             sendHostData.Content.Message = "Generating";
             // 使用已存在的 private static List<Food> foods
             int batchSize = 20;
@@ -217,6 +217,7 @@ public class UdpServer
                     if (distance <= (pair1.Value.PlayerDiameter / 2) && (pair2.Value.PlayerMass / pair1.Value.PlayerMass) < 0.7)
                     {
                         pair1.Value.PlayerMass += pair2.Value.PlayerMass * 0.9;
+                        pair1.Value.EatenPlayer += 1;
                         pair1.Value.PlayerDiameter = CalculatePlayerDiameter(pair1.Value.PlayerMass);
                         deleteKey.Add(pair2.Key);
                     }
@@ -246,14 +247,16 @@ public class UdpServer
         var closeFoods = foods
             .Where(food => CalculateDistance(player.PlayerPosition.X + (player.PlayerDiameter / 2), player.PlayerPosition.Y + player.PlayerDiameter / 2, food.X + (food.Diameter / 2), food.Y + food.Diameter / 2) < (player.PlayerDiameter / 2) + (food.Diameter / 2) * 0.8)
             .ToList();
-
+        int EatenFood = 0;
         // 对于每个靠近的食物，执行某种操作
         foreach (var food in closeFoods)
         {
             // 执行您想要的回饋逻辑
+            EatenFood += 1;
             player = GiveFeedback(player, food);
             eatenFood.Add(food.Key);
         }
+        player.EatenFood = EatenFood;
     }
     public static PlayerData GiveFeedback(PlayerData player, Food food)
     {
@@ -302,12 +305,27 @@ public class UdpServer
 
         PlayerPoint PP = new PlayerPoint(player.PlayerPosition.X, player.PlayerPosition.Y);
 
-        if (length >= MinimumMovementThreshold)
+        if (length >= player.PlayerDiameter / 2)
         {
             PP.X += directionX * MouseSpeed * CalculationSpeedCoe(player.PlayerMass);
             PP.Y += directionY * MouseSpeed * CalculationSpeedCoe(player.PlayerMass);
         }
-        
+        else if(length >= player.PlayerDiameter / 4)
+        {
+            PP.X += directionX * MouseSpeed * CalculationSpeedCoe(player.PlayerMass) * (length / player.PlayerDiameter / 1.5);
+            PP.Y += directionY * MouseSpeed * CalculationSpeedCoe(player.PlayerMass) * (length / player.PlayerDiameter / 1.5);
+        }
+        else if (length >= player.PlayerDiameter / 6)
+        {
+            PP.X += directionX * MouseSpeed * CalculationSpeedCoe(player.PlayerMass) * (length / player.PlayerDiameter / 2);
+            PP.Y += directionY * MouseSpeed * CalculationSpeedCoe(player.PlayerMass) * (length / player.PlayerDiameter / 2);
+        }
+        else if (length >= player.PlayerDiameter / 12)
+        {
+            PP.X += directionX * MouseSpeed * CalculationSpeedCoe(player.PlayerMass) * (length / player.PlayerDiameter / 3);
+            PP.Y += directionY * MouseSpeed * CalculationSpeedCoe(player.PlayerMass) * (length / player.PlayerDiameter / 3);
+        }
+
         //PlayerPosition.X = Math.Max(0, Math.Min(dataPacket.GameCanvasActualWidth - dataPacket.PlayerWidth, PlayerPosition.X));
         //PlayerPosition.Y = Math.Max(0, Math.Min(dataPacket.GameCanvasActualHeight - dataPacket.PlayerHeight, PlayerPosition.Y));
 
