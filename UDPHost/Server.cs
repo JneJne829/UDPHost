@@ -92,7 +92,7 @@ public class UdpServer
                 break;
             case 1:
                 clientEndpoints.Add(senderEndPoint);
-                PostbackCreationMessage(clientData.Number, clientData.Color);
+                PostbackCreationMessage(clientData.Name, clientData.Number, clientData.Color);
                 break;
             case 2:
                 UpdatePlayerPosition(clientData);
@@ -108,14 +108,14 @@ public class UdpServer
         else
             Console.WriteLine($"{senderEndPoint} Delete Failed : Unknown IP");
     }
-    private static void PostbackCreationMessage(int Number, int color)
+    private static void PostbackCreationMessage(String name, int Number, int color)
     {
         HostData sendHostData = new HostData(0,new Content("", Number));
         if (playerList.ContainsKey(Number))       
             sendHostData.Content.Message = "Failure";                
         else
         {
-            playerList[Number] = new PlayerData(new PlayerPoint(50, 50), new PlayerPoint(50, 50), 20.0, CalculatePlayerDiameter(20.0), color, 0, 0);
+            playerList[Number] = new PlayerData(name, new PlayerPoint(50, 50), new PlayerPoint(50, 50), 20.0, CalculatePlayerDiameter(20.0), color, 0, 0);
             sendHostData.Content.Message = "Generating";
             // 使用已存在的 private static List<Food> foods
             int batchSize = 20;
