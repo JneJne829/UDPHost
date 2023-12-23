@@ -9,6 +9,9 @@ using PlayerPointNamespace;
 using System.Collections.Concurrent;
 using FoodNamespace;
 using System.Drawing;
+using RankMemberNamespace;
+using System.Linq;
+
 
 
 public class UdpServer
@@ -56,7 +59,7 @@ public class UdpServer
 
         foreach (var clientEndPoint in clientEndpoints)
         {
-            if ((host.Mode > 1) || (host.Mode == 1 && ((DateTime.Now - lastPrintTime).TotalSeconds >= 10))
+            if ((host.Mode > 1 && host.Mode < 4) || (host.Mode == 1 && ((DateTime.Now - lastPrintTime).TotalSeconds >= 10))
                 || ((host.Content.Message == "Success") && host.Mode == 0))
             {
                 Console.WriteLine($"Send to {clientEndPoint} Mode = {host.Mode} Context = {host.Content.PlayerID} {host.Content.Message}");
@@ -174,6 +177,9 @@ public class UdpServer
 
     private static void Calculate()
     {
+
+        List<RankMember> rank = new List<RankMember>();
+
         foreach (var pair in playerList)
         {
             int key = pair.Key; // 獲取鍵
@@ -190,12 +196,13 @@ public class UdpServer
                     GenerateFood(20, AddEllipse);
                 else if ((DateTime.Now - setTime).TotalSeconds >= 1) //定時投放食物
                 {
-                    GenerateFood(5, AddEllipse);
+                    GenerateFood(20, AddEllipse);
                     setTime = DateTime.Now;
                 }
             }
-          
-            playerList[key] = player;         
+
+            rank.Add(new RankMember(player.PlayerName, player.PlayerMass));
+            playerList[key] = player;
             hostData.Content.AddEllipse = AddEllipse;
             hostData.Content.eatenFood = eatenFood;
             ///hostData.Content.PlayerData.PlayerMass = pair.Value.PlayerMass;
@@ -205,6 +212,11 @@ public class UdpServer
             hostData.Content.Message = "PlayerMove";
             SendMessageToAllClients(hostData);
         }
+
+        rank = rank.OrderByDescending(r => r.Mass).ToList();
+        HostData Rankdata = new HostData(4, new Content { Rank = rank });
+        SendMessageToAllClients(Rankdata); // 傳送排名
+
         List<int> deleteKey = new List<int>();
         foreach (var pair1 in playerList) // 計算玩家碰撞
         {
