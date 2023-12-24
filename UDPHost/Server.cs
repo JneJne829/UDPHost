@@ -12,8 +12,6 @@ using System.Drawing;
 using RankMemberNamespace;
 using System.Linq;
 
-
-
 public class UdpServer
 {
     private static HashSet<IPEndPoint> clientEndpoints = new HashSet<IPEndPoint>();
@@ -27,11 +25,11 @@ public class UdpServer
     private static DateTime lastPrintTime2 = DateTime.MinValue;
     private static DateTime timeNow = DateTime.Now;
     private static DateTime setTime;
-    private static Point map = new Point(6000,3000);
+    private static Point map = new Point(6000,6000);
     private const double MinimumMovementThreshold = 5.0;
     private static double MouseSpeed = 3;
-    private const int initFood = 4000;
-    private const int maxFood = 8000;
+    private const int initFood = 7000;
+    private const int maxFood = 10000;
     private static int ellipseMapPointer = 0;
     private static bool[,] grid = new bool[map.X, map.Y];
     private static bool IsCreatFood = false;
