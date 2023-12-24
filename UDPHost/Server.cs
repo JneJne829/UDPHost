@@ -116,7 +116,8 @@ public class UdpServer
             sendHostData.Content.Message = "Failure";                
         else
         {
-            playerList[Number] = new PlayerData(name, new PlayerPoint(50, 50), new PlayerPoint(50, 50), 20.0, CalculatePlayerDiameter(20.0), color, 0, 0);
+            Point rebirthPoint = new Point(random.Next(100, map.X - 100), random.Next(100, map.Y - 100));
+            playerList[Number] = new PlayerData(name, new PlayerPoint(rebirthPoint.X, rebirthPoint.Y), new PlayerPoint(rebirthPoint.X, rebirthPoint.Y), 20.0, CalculatePlayerDiameter(20.0), color, 0, 0);
             sendHostData.Content.Message = "Generating";
             // 使用已存在的 private static List<Food> foods
             int batchSize = 20;
