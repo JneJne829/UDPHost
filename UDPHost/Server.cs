@@ -36,8 +36,6 @@ public class UdpServer
     private static bool loop = true;
     private static bool generateFoodLock = false;
    
-    
-
     public static void Main()
     {
         var clientData = new ClientData {Mode = 0, Number = 1, Position = new PlayerPoint(100, 200) };
