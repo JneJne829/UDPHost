@@ -43,9 +43,9 @@ public class UdpServer
         var deserializedClientData = JsonSerializer.Deserialize<ClientData>(json);
         StartUdpListener();
         GameComputing();
-        while (loop) // loop 是一个静态字段，控制程序运行
+        while (loop) // loop 是一個靜態字段，控製程式運行
         {
-            Task.Delay(1000).Wait(); // 简单的等待，防止 CPU 使用率过高
+            Task.Delay(1000).Wait(); // 簡單的等待，防止 CPU 使用率過高
         }        
     }
 
@@ -219,7 +219,7 @@ public class UdpServer
         {
             foreach (var pair2 in playerList)
             {
-                if (pair1.Key != pair2.Key) // 确保不与自己比较
+                if (pair1.Key != pair2.Key) // 確保不與自己比較
                 {
                     double distance = CalculateDistance(pair1.Value.PlayerPosition, pair2.Value.PlayerPosition, pair1.Value.PlayerDiameter, pair2.Value.PlayerDiameter);
 
@@ -252,12 +252,12 @@ public class UdpServer
     }
     private static void CheckFoodProximity(PlayerData player, List<int> eatenFood)
     {
-        // 获取距离小于10的食物列表
+        // 取得距離小於10的食物列表
         var closeFoods = foods
             .Where(food => CalculateDistance(player.PlayerPosition.X + (player.PlayerDiameter / 2), player.PlayerPosition.Y + player.PlayerDiameter / 2, food.X + (food.Diameter / 2), food.Y + food.Diameter / 2) < (player.PlayerDiameter / 2) + (food.Diameter / 2) * 0.8)
             .ToList();
         int EatenFood = 0;
-        // 对于每个靠近的食物，执行某种操作
+        // 對於每個靠近的食物，執行某種操作
         foreach (var food in closeFoods)
         {
             // 执行您想要的回饋逻辑
@@ -308,8 +308,8 @@ public class UdpServer
         double length = Math.Sqrt(directionX * directionX + directionY * directionY);
 
 
-        directionX /= length; // 归一化
-        directionY /= length; // 归一化
+        directionX /= length; // 歸一化
+        directionY /= length; // 歸一化
         
 
         PlayerPoint PP = new PlayerPoint(player.PlayerPosition.X, player.PlayerPosition.Y);
@@ -344,8 +344,8 @@ public class UdpServer
     {
         const double maxMass = 400;
         const double minCoe = 0.6;
-        const double transitionMass = 100; // 在此质量值之前变化较慢
-        const double transitionCoe = 0.92; // 在 transitionMass 时的系数
+        const double transitionMass = 100; // 在此質量值之前變化較慢
+        const double transitionCoe = 0.92; // 在 transitionMass 時的係數
 
         // 确保质量在1和400之间
         playerMass = Math.Max(1, Math.Min(playerMass, maxMass));
@@ -353,14 +353,14 @@ public class UdpServer
         double speedCoe;
         if (playerMass <= transitionMass)
         {
-            // 在 transitionMass 之前使用较慢的变化速度
+            // 在 transitionMass 之前使用較慢的變化速度
             double rangeToTransition = 1 - transitionCoe;
             double normalizedMass = playerMass / transitionMass;
             speedCoe = 1 - (rangeToTransition * normalizedMass);
         }
         else
         {
-            // 在 transitionMass 之后使用更快的变化速度
+            // 在 transitionMass 之後使用更快的變化速度
             double rangePostTransition = transitionCoe - minCoe;
             double normalizedMass = (playerMass - transitionMass) / (maxMass - transitionMass);
             speedCoe = transitionCoe - (rangePostTransition * normalizedMass);
